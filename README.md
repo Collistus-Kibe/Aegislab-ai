@@ -1,3 +1,6 @@
+
+<img width="1024" height="572" alt="hui" src="https://github.com/user-attachments/assets/4a501d14-9c8f-418f-90bd-6e3e3f350837" />
+
 # 🛡️ AegisLab AI
 
 **A clinical diagnostic copilot that analyzes patient medical biomarkers in real-time to uncover hidden health risks.**
@@ -20,3 +23,11 @@ AegisLab AI is an advanced clinical laboratory intelligence system designed to a
 * **Database:** TiDB (MySQL-compatible distributed SQL)
 * **AI Engine:** Google Gemini (Primary) & OpenAI (Fallback)
 * **Authentication:** Firebase Auth & Firebase Admin SDK
+
+
+👥 Contributors
+Collistus Kibe - Project Lead & Core AI/Backend Engineer
+
+Dennis Gerrard- Frontend and mostly JS expert
+
+Wokabi  Staney - Backend Dev
