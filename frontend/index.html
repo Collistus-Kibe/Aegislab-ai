@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AegisLab AI — Clinical Diagnostic Copilot Dashboard" />
+    <title>AegisLab AI — Clinical Copilot</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+    <!-- ═══════════════════════════════════════════════════
+         LOGIN
+         ═══════════════════════════════════════════════════ -->
+    <div id="login-container">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="logo-icon">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                        <defs>
+                            <linearGradient id="grad-shield" x1="8" y1="4" x2="40" y2="44">
+                                <stop stop-color="#008080" />
+                                <stop offset="1" stop-color="#00B4D8" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M24 4L6 12v12c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V12L24 4z"
+                            fill="url(#grad-shield)" opacity="0.12" />
+                        <path d="M24 4L6 12v12c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V12L24 4z"
+                            stroke="url(#grad-shield)" stroke-width="2" fill="none" />
+                        <rect x="21" y="15" width="6" height="18" rx="1.5" fill="url(#grad-shield)" />
+                        <rect x="15" y="21" width="18" height="6" rx="1.5" fill="url(#grad-shield)" />
+                    </svg>
+                </div>
+                <h1>AegisLab <span class="accent">AI</span></h1>
+                <p class="subtitle">Clinical Diagnostic Copilot</p>
+            </div>
+            <div class="login-form">
+                <button id="login-btn" type="button" class="google-btn">
+                    <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                            fill="#4285F4" />
+                        <path
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                            fill="#34A853" />
+                        <path
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                            fill="#FBBC05" />
+                        <path
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                            fill="#EA4335" />
+                    </svg>
+                    <span>Sign In with Google</span>
+                </button>
+                <p id="login-error" class="error-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         DASHBOARD
+         ═══════════════════════════════════════════════════ -->
+    <div id="dashboard-container" style="display: none;">
+
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <svg class="logo-sm" width="28" height="28" viewBox="0 0 48 48" fill="none">
+                    <defs>
+                        <linearGradient id="gn" x1="8" y1="4" x2="40" y2="44">
+                            <stop stop-color="#008080" />
+                            <stop offset="1" stop-color="#00B4D8" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M24 4L6 12v12c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V12L24 4z" stroke="url(#gn)"
+                        stroke-width="2.5" fill="none" />
+                    <rect x="21" y="15" width="6" height="18" rx="1.5" fill="url(#gn)" />
+                    <rect x="15" y="21" width="18" height="6" rx="1.5" fill="url(#gn)" />
+                </svg>
+                <span class="brand-text">AegisLab <span class="accent">AI</span></span>
+            </div>
+            <div class="top-bar-right">
+                <span id="user-email" class="user-badge"></span>
+                <button id="logout-btn" class="btn-ghost">Sign Out</button>
+            </div>
+        </header>
+
+        <!-- Dashboard Grid -->
+        <main class="dashboard-grid">
+
+            <!-- ═══ LEFT: DATA ENTRY ═══ -->
+            <aside class="sidebar">
+
+                <!-- Patient Details -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon card-icon--teal">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </div>
+                        <h2>Patient Details</h2>
+                    </div>
+
+                    <div class="radio-group">
+                        <label class="radio-pill">
+                            <input type="radio" name="patient-mode" value="new" checked />
+                            <span>New Patient</span>
+                        </label>
+                        <label class="radio-pill">
+                            <input type="radio" name="patient-mode" value="existing" />
+                            <span>Existing Patient</span>
+                        </label>
+                    </div>
+
+                    <div id="new-patient-fields">
+                        <div class="input-group">
+                            <label for="patient-id">Patient ID</label>
+                            <input type="text" id="patient-id" placeholder="e.g. PT-20260001" />
+                        </div>
+                        <div class="input-group">
+                            <label for="patient-name">Patient Name</label>
+                            <input type="text" id="patient-name" placeholder="Full name" />
+                        </div>
+                    </div>
+
+                    <div id="existing-patient-fields" style="display: none;">
+                        <div class="input-group">
+                            <label for="patient-select">Select Patient</label>
+                            <select id="patient-select">
+                                <option value="">— Select a patient —</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lab Results Entry -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon card-icon--blue">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                        </div>
+                        <h2>Lab Results Entry</h2>
+                    </div>
+
+                    <form id="lab-form">
+
+                        <!-- Category: Hematology -->
+                        <div class="lab-category">
+                            <button type="button" class="category-toggle active" data-target="cat-hematology">
+                                <span class="cat-dot cat-dot--red"></span>
+                                Hematology (Blood)
+                                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+                            <div class="category-body" id="cat-hematology">
+                                <div class="lab-input-row">
+                                    <label>Hemoglobin <span class="unit">g/dL</span></label>
+                                    <input type="number" step="0.1" name="Hemoglobin" placeholder="12.5" />
+                                </div>
+                                <div class="lab-input-row">
+                                    <label>MCV <span class="unit">fL</span></label>
+                                    <input type="number" step="0.1" name="MCV" placeholder="82.0" />
+                                </div>
+                                <div class="lab-input-row">
+                                    <label>WBC <span class="unit">/µL</span></label>
+                                    <input type="number" step="1" name="WBC" placeholder="6800" />
+                                </div>
+                                <div class="lab-input-row">
+                                    <label>Platelets <span class="unit">/µL</span></label>
+                                    <input type="number" step="1" name="Platelets" placeholder="250000" />
+                                </div>
+                                <div class="lab-input-row">
+                                    <label>Ferritin <span class="unit">ng/mL</span></label>
+                                    <input type="number" step="0.1" name="Ferritin" placeholder="50" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category: Chemistry -->
+                        <div class="lab-category">
+                            <button type="button" class="category-toggle" data-target="cat-chemistry">
+                                <span class="cat-dot cat-dot--green"></span>
+                                Chemistry
+                                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+                            <div class="category-body collapsed" id="cat-chemistry">
+                                <div class="lab-input-row">
+                                    <label>Creatinine <span class="unit">mg/dL</span></label>
+                                    <input type="number" step="0.01" name="Creatinine" placeholder="1.1" />
+                                </div>
+                                <div class="lab-input-row">
+                                    <label>Potassium <span class="unit">mmol/L</span></label>
+                                    <input type="number" step="0.1" name="Potassium" placeholder="4.0" />
+                                </div>
+                                <div class="lab-input-row">
+                                    <label>Sodium <span class="unit">mmol/L</span></label>
+                                    <input type="number" step="0.1" name="Sodium" placeholder="140" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category: Additional Tests -->
+                        <div class="lab-category">
+                            <button type="button" class="category-toggle" data-target="cat-additional">
+                                <span class="cat-dot cat-dot--purple"></span>
+                                Additional Tests
+                                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+                            <div class="category-body collapsed" id="cat-additional">
+                                <div id="additional-tests-list"></div>
+                                <button type="button" id="add-test-btn" class="btn-add-test">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5" stroke-linecap="round">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
+                                    Add Test
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="analyze-btn" class="btn-primary">
+                            <span class="btn-text">Analyze Results</span>
+                            <span class="btn-spinner" style="display:none;"></span>
+                        </button>
+                    </form>
+                </div>
+            </aside>
+
+            <!-- ═══ RIGHT: DASHBOARD PANELS ═══ -->
+            <div class="main-area">
+
+                <!-- Welcome / Overview (visible by default) -->
+                <section class="dashboard-card welcome-card" id="welcome-panel">
+                    <div class="welcome-hero">
+                        <svg class="welcome-icon" width="64" height="64" viewBox="0 0 48 48" fill="none">
+                            <defs>
+                                <linearGradient id="gw" x1="8" y1="4" x2="40" y2="44">
+                                    <stop stop-color="#008080" />
+                                    <stop offset="1" stop-color="#00B4D8" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M24 4L6 12v12c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V12L24 4z"
+                                fill="url(#gw)" opacity="0.1" />
+                            <path d="M24 4L6 12v12c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V12L24 4z"
+                                stroke="url(#gw)" stroke-width="1.5" fill="none" />
+                            <rect x="21" y="15" width="6" height="18" rx="1.5" fill="url(#gw)" />
+                            <rect x="15" y="21" width="18" height="6" rx="1.5" fill="url(#gw)" />
+                        </svg>
+                        <h2>Welcome to AegisLab AI</h2>
+                        <p>Enter patient lab results on the left to receive an AI-powered clinical diagnostic report.
+                            Results are analyzed by Gemini with GPT-4o fallback.</p>
+                    </div>
+
+                    <div class="welcome-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-analyses">—</div>
+                            <div class="stat-label">Analyses Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-patients">—</div>
+                            <div class="stat-label">Active Patients</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value stat-value--green">Online</div>
+                            <div class="stat-label">AI Engine</div>
+                        </div>
+                    </div>
+
+                    <div class="recent-patients-section">
+                        <h3>Quick Actions</h3>
+                        <div class="quick-actions">
+                            <button type="button" class="quick-action-btn" id="quick-lookup-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                Patient Lookup
+                            </button>
+                            <button type="button" class="quick-action-btn" id="quick-history-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                                View History
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI Diagnostic Report (hidden) -->
+                <section class="dashboard-card" id="results-container" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-icon card-icon--purple">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                            </svg>
+                        </div>
+                        <h2>Diagnostic Report</h2>
+                    </div>
+                    <div id="results-content"></div>
+                </section>
+
+                <!-- Trend Chart (hidden) -->
+                <section class="dashboard-card" id="trend-card" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-icon card-icon--green">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                            </svg>
+                        </div>
+                        <h2>Trend Analysis</h2>
+                        <div class="card-header-actions">
+                            <select id="biomarker-selector">
+                                <option value="Hemoglobin">Hemoglobin</option>
+                                <option value="MCV">MCV</option>
+                                <option value="Ferritin">Ferritin</option>
+                                <option value="WBC">WBC</option>
+                                <option value="Platelets">Platelets</option>
+                                <option value="Creatinine">Creatinine</option>
+                                <option value="Potassium">Potassium</option>
+                                <option value="Sodium">Sodium</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="biomarkerChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Patient History (hidden) -->
+                <section class="dashboard-card" id="history-section" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-icon card-icon--amber">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
+                            </svg>
+                        </div>
+                        <h2>Patient History</h2>
+                    </div>
+                    <div id="history-container">
+                        <p class="empty-state">No history loaded yet.</p>
+                    </div>
+                </section>
+
+                <!-- Patient Lookup (hidden) -->
+                <section class="dashboard-card" id="lookup-panel" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-icon card-icon--teal">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                        </div>
+                        <h2>Patient Lookup</h2>
+                    </div>
+                    <div class="history-search">
+                        <input type="text" id="history-patient-id" placeholder="Enter Patient ID" />
+                        <button type="button" id="load-history-btn" class="btn-primary btn-sm">Load</button>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
