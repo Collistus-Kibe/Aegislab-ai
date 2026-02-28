@@ -4,7 +4,9 @@ Initializes Firebase Admin SDK and provides a FastAPI dependency
 for verifying Bearer tokens on protected endpoints.
 """
 
+import json
 import logging
+import os
 
 import firebase_admin
 from firebase_admin import auth, credentials
@@ -17,11 +19,22 @@ logger = logging.getLogger(__name__)
 
 # ── Firebase Initialization ─────────────────────────────────────────────────
 # Guard against duplicate initialization during hot-reloads in development.
+# Priority: FIREBASE_JSON_STRING env var (production) → file path (local dev)
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate(settings.FIREBASE_CRED_PATH)
-    firebase_admin.initialize_app(cred)
-    logger.info("Firebase Admin SDK initialized from: %s", settings.FIREBASE_CRED_PATH)
+    firebase_json_string = os.getenv("FIREBASE_JSON_STRING")
+
+    if firebase_json_string:
+        # Production: parse service account JSON from environment variable
+        service_account_info = json.loads(firebase_json_string)
+        cred = credentials.Certificate(service_account_info)
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase Admin SDK initialized from FIREBASE_JSON_STRING env var")
+    else:
+        # Local development: load from file path
+        cred = credentials.Certificate(settings.FIREBASE_CRED_PATH)
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase Admin SDK initialized from file: %s", settings.FIREBASE_CRED_PATH)
 else:
     logger.info("Firebase Admin SDK already initialized — skipping.")
 
