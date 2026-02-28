@@ -1,7 +1,6 @@
 """
-AegisLab AI — Core AI Inference Engine (Gemini + OpenAI Fallback)
-Async service that sends validated lab data to the Gemini API and falls back
-to OpenAI GPT-4o if Gemini fails or rate-limits.
+AegisLab AI — Core AI Inference Engine (Multi-Key Resilient Fallback)
+Cascading fallback: Gemini Key 1 → Gemini Key 2 → OpenAI Key 1 → OpenAI Key 2.
 """
 
 import json
@@ -21,9 +20,9 @@ class AegisAnalyzer:
     Wraps Google Gemini and OpenAI to perform clinical laboratory-result
     analysis and return structured JSON reports.
 
-    **Resilience strategy**: Gemini is the primary model. If it fails for
-    any reason (rate-limit, network, bad response), the engine automatically
-    falls back to OpenAI GPT-4o using the same prompt and schema.
+    **Resilience strategy**: Tries each configured API key in sequence.
+    Gemini keys are tried first, then OpenAI keys. If all fail, raises
+    RuntimeError with details of every failure.
     """
 
     SYSTEM_PROMPT: str = (
@@ -59,15 +58,20 @@ class AegisAnalyzer:
     )
 
     def __init__(self) -> None:
-        """Configure both Gemini and OpenAI clients."""
-        # ── Primary: Gemini ──────────────────────────────────────────
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
-        logger.info("Primary model initialized: gemini-2.5-flash")
+        """Configure all available API keys."""
+        self.gemini_keys = settings.gemini_keys
+        self.openai_keys = settings.openai_keys
 
-        # ── Fallback: OpenAI ─────────────────────────────────────────
-        self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        logger.info("Fallback model initialized: gpt-4o (OpenAI)")
+        total = len(self.gemini_keys) + len(self.openai_keys)
+        logger.info(
+            "AegisAnalyzer initialized with %d Gemini key(s) and %d OpenAI key(s) — %d total fallback slots",
+            len(self.gemini_keys),
+            len(self.openai_keys),
+            total,
+        )
+
+        if total == 0:
+            logger.error("⚠ NO API KEYS CONFIGURED — analysis will fail!")
 
     # ── helpers ──────────────────────────────────────────────────────────
 
@@ -104,15 +108,56 @@ class AegisAnalyzer:
             )
             raise ValueError(f"{source} response validation failed: {exc}") from exc
 
+    # ── Gemini attempt ───────────────────────────────────────────────────
+
+    async def _try_gemini(self, api_key: str, prompt: str, label: str) -> ClinicalReportOutput:
+        """Attempt analysis using a single Gemini API key."""
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+
+        logger.info("Trying %s …", label)
+
+        response = await model.generate_content_async(
+            prompt,
+            generation_config={
+                "response_mime_type": "application/json",
+            },
+        )
+
+        raw_text = response.text
+        logger.debug("Raw %s response: %s", label, raw_text[:500])
+        return self._parse_and_validate(raw_text, label)
+
+    # ── OpenAI attempt ───────────────────────────────────────────────────
+
+    async def _try_openai(self, api_key: str, user_message: str, label: str) -> ClinicalReportOutput:
+        """Attempt analysis using a single OpenAI API key."""
+        client = AsyncOpenAI(api_key=api_key)
+
+        logger.info("Trying %s …", label)
+
+        oai_response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            response_format={"type": "json_object"},
+        )
+
+        raw_text = oai_response.choices[0].message.content
+        logger.debug("Raw %s response: %s", label, raw_text[:500])
+        return self._parse_and_validate(raw_text, label)
+
     # ── public API ───────────────────────────────────────────────────────
 
     async def analyze_lab_results(
         self, lab_data: LabTestInput
     ) -> ClinicalReportOutput:
         """
-        Send lab results for AI analysis with automatic fallback.
+        Send lab results for AI analysis with multi-key cascading fallback.
 
-        Flow: Gemini → (on failure) → OpenAI GPT-4o
+        Flow: Gemini Key 1 → Gemini Key 2 → OpenAI Key 1 → OpenAI Key 2
 
         Parameters
         ----------
@@ -127,7 +172,7 @@ class AegisAnalyzer:
         Raises
         ------
         RuntimeError
-            If both Gemini and OpenAI fail.
+            If ALL keys across ALL providers fail.
         """
         formatted_tests = self._format_lab_tests(lab_data.tests)
         patient_label = lab_data.patient_id or "N/A"
@@ -140,56 +185,31 @@ class AegisAnalyzer:
 
         prompt = f"{self.SYSTEM_PROMPT}\n\n{user_message}"
 
-        # ── Attempt 1: Gemini ────────────────────────────────────────
-        try:
-            logger.info(
-                "Sending lab data to Gemini (patient=%s, tests=%d)",
-                patient_label,
-                len(lab_data.tests),
-            )
+        errors = []
 
-            response = await self.model.generate_content_async(
-                prompt,
-                generation_config={
-                    "response_mime_type": "application/json",
-                },
-            )
+        # ── Gemini keys ──────────────────────────────────────────────
+        for i, key in enumerate(self.gemini_keys, start=1):
+            label = f"Gemini Key {i}"
+            try:
+                return await self._try_gemini(key, prompt, label)
+            except Exception as exc:
+                errors.append(f"{label}: {exc}")
+                logger.warning(
+                    "%s failed, trying next… (error: %s)", label, exc
+                )
 
-            raw_text = response.text
-            logger.debug("Raw Gemini response: %s", raw_text[:500])
-            return self._parse_and_validate(raw_text, "Gemini")
+        # ── OpenAI keys ──────────────────────────────────────────────
+        for i, key in enumerate(self.openai_keys, start=1):
+            label = f"OpenAI Key {i}"
+            try:
+                return await self._try_openai(key, user_message, label)
+            except Exception as exc:
+                errors.append(f"{label}: {exc}")
+                logger.warning(
+                    "%s failed, trying next… (error: %s)", label, exc
+                )
 
-        except Exception as gemini_exc:
-            logger.warning(
-                "Gemini failed, falling back to OpenAI... (error: %s)", gemini_exc
-            )
-
-        # ── Attempt 2: OpenAI GPT-4o ────────────────────────────────
-        try:
-            logger.info(
-                "Sending lab data to OpenAI GPT-4o (patient=%s, tests=%d)",
-                patient_label,
-                len(lab_data.tests),
-            )
-
-            oai_response = await self.openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message},
-                ],
-                response_format={"type": "json_object"},
-            )
-
-            raw_text = oai_response.choices[0].message.content
-            logger.debug("Raw OpenAI response: %s", raw_text[:500])
-            return self._parse_and_validate(raw_text, "OpenAI")
-
-        except Exception as openai_exc:
-            logger.error(
-                "OpenAI fallback also failed: %s", openai_exc, exc_info=True
-            )
-            raise RuntimeError(
-                f"Both AI providers failed. "
-                f"Gemini: {gemini_exc} | OpenAI: {openai_exc}"
-            ) from openai_exc
+        # ── All failed ───────────────────────────────────────────────
+        error_summary = " | ".join(errors) or "No API keys configured"
+        logger.error("All AI providers failed: %s", error_summary)
+        raise RuntimeError(f"All AI providers failed. {error_summary}")

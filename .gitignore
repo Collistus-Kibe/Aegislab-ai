@@ -1,2 +1,37 @@
+# ── Secrets & Environment ──
 .env
+.env.*
+!.env.template
+
+# ── Firebase Service Account ──
 AegisLab AI.json
+*.p12
+*.pem
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Misc ──
+*.log
+node_modules/

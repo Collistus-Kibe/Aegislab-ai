@@ -584,3 +584,66 @@ function formatDate(isoStr) {
         hour: "2-digit", minute: "2-digit",
     });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  TOAST NOTIFICATION
+// ═══════════════════════════════════════════════════════════════════
+
+function showToast(message, durationMs = 3000) {
+    const toast = document.getElementById("toast");
+    const toastMsg = document.getElementById("toast-message");
+    toastMsg.textContent = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, durationMs);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SAVE & NEW PATIENT
+// ═══════════════════════════════════════════════════════════════════
+
+document.getElementById("save-new-btn").addEventListener("click", () => {
+    // Get patient info for the toast
+    const mode = document.querySelector('input[name="patient-mode"]:checked').value;
+    let savedName = "";
+    if (mode === "new") {
+        savedName = document.getElementById("patient-name").value.trim() || patientIdInput.value.trim() || "Patient";
+    } else {
+        const sel = patientSelect.options[patientSelect.selectedIndex];
+        savedName = sel ? sel.textContent : "Patient";
+    }
+
+    // Show success toast
+    showToast(`✓ ${savedName} saved! Ready for next patient.`);
+
+    // Reset form fields
+    labForm.reset();
+
+    // Clear patient text inputs manually (reset doesn't always clear them)
+    patientIdInput.value = "";
+    document.getElementById("patient-name").value = "";
+
+    // Reset to "New Patient" mode
+    document.querySelector('input[name="patient-mode"][value="new"]').checked = true;
+    document.getElementById("new-patient-fields").style.display = "block";
+    document.getElementById("existing-patient-fields").style.display = "none";
+
+    // Clear additional test rows
+    document.getElementById("additional-tests-list").innerHTML = "";
+
+    // Hide results and show welcome
+    resultsContainer.style.display = "none";
+    trendCard.style.display = "none";
+    historySection.style.display = "none";
+    lookupPanel.style.display = "none";
+    welcomePanel.style.display = "block";
+
+    // Refresh patient dropdown (so newly saved patient appears)
+    loadPatients();
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+});
+

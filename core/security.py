@@ -50,24 +50,32 @@ async def verify_user(
     token = credentials.credentials
 
     try:
-        decoded_token = auth.verify_id_token(token)
+        decoded_token = auth.verify_id_token(token, check_revoked=False, clock_skew_seconds=5)
         uid: str = decoded_token["uid"]
         logger.debug("Authenticated user: %s", uid)
         return uid
 
-    except auth.InvalidIdTokenError:
-        logger.warning("Invalid Firebase ID token received.")
+    except auth.InvalidIdTokenError as exc:
+        logger.warning("Invalid Firebase ID token: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token.",
+            detail=f"Invalid authentication token: {exc}",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    except auth.ExpiredIdTokenError:
-        logger.warning("Expired Firebase ID token received.")
+    except auth.ExpiredIdTokenError as exc:
+        logger.warning("Expired Firebase ID token: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication token has expired.",
+            detail="Authentication token has expired. Please sign out and sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    except ValueError as exc:
+        logger.warning("Malformed token value: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Malformed authentication token: {exc}",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -75,6 +83,6 @@ async def verify_user(
         logger.error("Token verification failed: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials.",
+            detail=f"Could not validate credentials: {exc}",
             headers={"WWW-Authenticate": "Bearer"},
         )
